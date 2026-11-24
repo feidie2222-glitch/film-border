@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>胶片边框</title>
+  <style>
+    :root { color-scheme:dark; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif; background:#161616; color:#f1eee7 }
+    * { box-sizing:border-box } body { margin:0; min-height:100vh } button,select { font:inherit } button { cursor:pointer } button:disabled { cursor:not-allowed; opacity:.45 }
+    header { height:72px; padding:0 32px; border-bottom:1px solid #34332f; display:flex; align-items:center; justify-content:space-between; gap:12px }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:700; font-size:17px; letter-spacing:.05em } .mark { border:1px solid #d9b878; color:#e4c994; font-size:13px; padding:5px 7px; letter-spacing:.1em }
+    .caption { color:#aaa69d; font-size:12px; letter-spacing:.04em } .shell { display:grid; grid-template-columns:290px minmax(0,1fr); min-height:calc(100vh - 72px) }
+    aside { padding:30px 24px; border-right:1px solid #34332f; background:#1c1c1b; display:flex; flex-direction:column; gap:26px }
+    h1 { font-size:22px; line-height:1.3; margin:0 0 8px; font-weight:650 } p { margin:0; line-height:1.7 } .muted { color:#aaa69d; font-size:13px } .label { display:block; font-size:12px; color:#bbb6ac; margin-bottom:10px; letter-spacing:.04em }
+    .upload, select, .export, input[type=number] { width:100%; border-radius:7px; min-height:44px } input[type=number] { padding:0 12px; border:1px solid #4d4a43; background:#272724; color:#f0ece3 } .check { display:flex; gap:8px; align-items:center; margin-top:10px; font-size:13px; color:#ccc6ba } .upload { background:#2a2926; color:#eee9dd; border:1px solid #524f48; font-weight:600 }
+    .upload:hover { background:#34322d } select { padding:0 12px; border:1px solid #4d4a43; background:#272724; color:#f0ece3 } .export { border:0; background:#ddbf86; color:#252018; font-weight:700 } .export:not(:disabled):hover { background:#ebd1a0 }
+    .rule { height:1px; background:#34332f } .footer { margin-top:auto; color:#817e77; font-size:12px; line-height:1.7 }
+    main { min-width:0; min-height:0; padding:30px; display:flex; flex-direction:column; gap:16px } .top { display:flex; align-items:center; justify-content:space-between; gap:12px } .top strong { font-size:14px } .filename { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:55vw }
+    .stage { flex:1; min-height:420px; border:1px solid #3b3935; border-radius:10px; background:#20201e; display:grid; place-items:center; overflow:hidden; position:relative; padding:28px }
+    .stage.dragging { border-color:#dfc18b; background:#292820 } .empty { text-align:center; color:#eee9de; max-width:360px } .empty-icon { margin:0 auto 22px; width:76px; height:60px; border:1px solid #7c7468; border-radius:3px; position:relative } .empty-icon:before,.empty-icon:after { content:""; position:absolute; top:8px; bottom:8px; width:5px; border-top:5px dotted #a89e8f; border-bottom:5px dotted #a89e8f } .empty-icon:before { left:6px } .empty-icon:after { right:6px }
+    .empty strong { display:block; font-size:18px; margin-bottom:8px } .empty p { color:#aaa69d; font-size:13px } #preview { display:none; max-width:100%; max-height:calc(100vh - 200px); width:auto; height:auto; object-fit:contain; box-shadow:0 14px 42px #0009 }
+    .status { color:#aaa69d; font-size:12px; min-height:20px } .status.error { color:#ef9f91 } .spinner { display:inline-block; width:11px; height:11px; border:2px solid #80796d; border-top-color:#ead5a9; border-radius:50%; animation:spin .8s linear infinite; margin-right:7px; vertical-align:-1px } @keyframes spin { to { transform:rotate(360deg) } }
+    @media(max-width:720px) { header { height:60px; padding:0 18px } .caption { display:none } .shell { display:flex; flex-direction:column; min-height:calc(100vh - 60px) } aside { border-right:0; border-bottom:1px solid #34332f; padding:20px; gap:16px } aside h1 { font-size:19px } .footer,.rule { display:none } main { padding:18px; min-height:55vh } .stage { min-height:300px; padding:16px } #preview { max-height:60vh } }
+  </style>
+</head>
+<body>
+  <header><div class="brand"><span class="mark">35</span><span>胶片边框</span></div><div class="caption">FILM FRAME · 本地处理</div></header>
+  <div class="shell">
+    <aside>
+      <div><h1>给照片加一卷胶片</h1><p class="muted">选择照片与画幅，生成胶片片边。</p></div>
+      <div><span class="label">01 / 选择照片</span><button class="upload" id="open" type="button">打开照片</button><input id="file" type="file" accept="image/jpeg,image/png" hidden><p class="muted" style="margin-top:8px">支持 JPG、PNG，也可以拖入照片</p></div>
+      <div><label class="label" for="format">02 / 胶片画幅</label><select id="format"><option value="135">135 全画幅</option><option value="135_half">135 半格</option><option value="120_645">120 · 645</option><option value="120_6x6">120 · 6×6</option><option value="120_6x7">120 · 6×7</option></select><p class="muted" style="margin-top:8px">照片完整放入画幅，比例不同时留黑边。</p></div>
+      <div><label class="label" for="frameNumber">03 / 胶片张数</label><input id="frameNumber" type="number" min="1" max="99" step="1" value="11"><label class="check"><input id="autoAdvance" type="checkbox" checked> 导出后张数自动加一</label><p class="muted" style="margin-top:8px">部分胶片边上的其他数字是胶卷标记，会保持不变。</p></div>
+      <div>
+        <label class="label" for="filmStock">片边胶卷型号</label>
+        <select id="filmStock">
+          <option value="kodak_portra_400">Kodak Portra 400</option>
+          <option value="kodak_portra_160">Kodak Portra 160</option>
+          <option value="kodak_portra_800">Kodak Portra 800</option>
+          <option value="kodak_ektar_100">Kodak Ektar 100</option>
+          <option value="kodak_gold_200">Kodak Gold 200</option>
+          <option value="kodak_ultramax_400">Kodak Ultramax 400</option>
+          <option value="fujifilm_pro_400h">Fujifilm Pro 400H</option>
+          <option value="fujifilm_c200">Fujifilm C200</option>
+          <option value="fujifilm_xtra_400">Fujifilm X-Tra 400</option>
+          <option value="fujifilm_provia_100f">Fujifilm Provia 100F</option>
+          <option value="fujifilm_velvia_100">Fujifilm Velvia 100</option>
+          <option value="cinestill_800t">CineStill 800T</option>
+        </select>
+      </div>
+      <div class="rule"></div><button id="generate" class="export" type="button" disabled>生成边框</button><button id="save" class="upload" type="button" disabled>导出 PNG</button>
+      <p class="footer">照片处理在本机完成。导出 PNG 时，颜色会按浏览器的图像处理方式转换。</p>
+    </aside>
+    <main>
+      <div class="top"><strong>预览</strong><span class="caption filename" id="filename">等待选择照片</span></div>
+      <div class="stage" id="stage"><div class="empty" id="empty"><div class="empty-icon"></div><strong>从一张照片开始</strong><p>拖入照片，或点击左侧的「打开照片」</p></div><canvas id="preview" aria-label="添加胶片边框后的照片预览"></canvas></div>
+      <div id="status" class="status" role="status" aria-live="polite">选择照片后点击生成边框</div>
+    </main>
+  </div>
+  <script>
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id), fileInput=$('file'), stage=$('stage'), canvas=$('preview'), status=$('status'), save=$('save'), generate=$('generate');
+    const MAX_PIXELS=40_000_000, MAX_INPUT_BYTES=40*1024*1024;
+    const gateRatios={'135':36.25/24.3,'135_half':24/18,'120_645':56/41.5,'120_6x6':1,'120_6x7':69.5/56};
+    let source=null, fileName='', generation=0, controller=null, outputReady=false;
+    function setStatus(message, error=false, loading=false) { status.className='status'+(error?' error':''); status.replaceChildren(); if (loading) { const spin=document.createElement('span'); spin.className='spinner'; status.append(spin); } status.append(document.createTextNode(message)); }
+    function setBusy(busy) { $('open').disabled=busy; $('format').disabled=busy; $('frameNumber').disabled=busy; $('filmStock').disabled=busy; generate.disabled=busy || !source; save.disabled=busy || !outputReady; }
+    function settingsChanged() {
+      if (!source) return;
+      outputReady=false;
+      save.disabled=true;
+      setStatus('设置已更改，点击生成边框更新预览');
+    }
+    function engineInput(format) {
+      const ratio=gateRatios[format];
+      const landscape=source.width>=source.height;
+      const target=landscape?ratio:1/ratio;
+      let width=source.width, height=source.height;
+      if(width/height>target) height=Math.ceil(width/target); else width=Math.ceil(height*target);
+      if(width*height>60_000_000) throw new Error('此照片与画幅组合过大，请先缩小照片后再试。');
+      const image=document.createElement('canvas'); image.width=width; image.height=height;
+      const ctx=image.getContext('2d'); if(!ctx) throw new Error('无法创建图片画布。');
+      ctx.fillStyle='#000'; ctx.fillRect(0,0,width,height); ctx.drawImage(source,(width-source.width)/2,(height-source.height)/2);
+      return image.toDataURL('image/png');
+    }
+    function loadImage(url) { return new Promise((resolve,reject) => { const image=new Image(); image.onload=()=>resolve(image); image.onerror=()=>reject(new Error('图片无法读取，请选择有效的 JPG 或 PNG 文件。')); image.src=url; }); }
+    async function selectFile(file) {
+      if (!file) return;
+      if (!['image/jpeg','image/png'].includes(file.type)) { setStatus('请选择 JPG 或 PNG 图片。',true); return; }
+      if (file.size > MAX_INPUT_BYTES) { setStatus('图片文件超过 40 MB，请选择较小的图片。',true); return; }
+      const ticket=++generation; if (controller) controller.abort(); outputReady=false; save.disabled=true; setBusy(true); setStatus('正在读取照片…',false,true);
+      const url=URL.createObjectURL(file);
+      try {
+        const image=await loadImage(url); if (ticket!==generation) return;
+        if (image.naturalWidth*image.naturalHeight>MAX_PIXELS) throw new Error('图片超过 4000 万像素，请先缩小后再试。');
+        const sourceCanvas=document.createElement('canvas'); sourceCanvas.width=image.naturalWidth; sourceCanvas.height=image.naturalHeight;
+        const ctx=sourceCanvas.getContext('2d'); if (!ctx) throw new Error('无法创建图片画布。'); ctx.drawImage(image,0,0);
+        source=sourceCanvas; fileName=file.name.replace(/\.[^.]+$/,''); $('filename').textContent=file.name; $('filename').title=file.name;
+        canvas.width=source.width; canvas.height=source.height;
+        const preview=canvas.getContext('2d'); if (!preview) throw new Error('无法创建预览画布。');
+        preview.drawImage(source,0,0);
+        $('empty').hidden=true; canvas.style.display='block';
+        setBusy(false); setStatus('照片已就绪，点击生成边框');
+      } catch (error) { if (ticket===generation) { source=null; setStatus(error.message || '读取照片失败。',true); setBusy(false); } }
+      finally { URL.revokeObjectURL(url); fileInput.value=''; }
+    }
+    async function render() {
+      if (!source) return;
+      const ticket=++generation; if (controller) controller.abort(); controller=new AbortController(); outputReady=false; setBusy(true); setStatus('正在生成胶片边框，请稍候…',false,true);
+      try {
+        const frameNumber=Number($('frameNumber').value);
+        if(!Number.isInteger(frameNumber)||frameNumber<1||frameNumber>99) throw new Error('张数请输入 1 到 99。');
+        const format=$('format').value;
+        const response=await fetch('/render',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:engineInput(format),format,frameNumber,filmStock:$('filmStock').value}),signal:controller.signal});
+        let result; try { result=await response.json(); } catch (_) { throw new Error('无法读取引擎的响应。'); }
+        if (!response.ok) throw new Error(result.error || '生成边框失败。');
+        if (ticket!==generation) return;
+        const {width,height,gate,border}=result;
+        if (!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width*height>MAX_PIXELS*3||!Array.isArray(gate)||gate.length!==8||!gate.every(v=>Number.isFinite(v)&&v>=0&&v<=1)||typeof border!=='string'||!border.startsWith('data:image/png;base64,')) throw new Error('引擎返回了无效的画布信息。');
+        const edge=await loadImage(border); if (ticket!==generation) return;
+        if (edge.naturalWidth!==width||edge.naturalHeight!==height) throw new Error('边框图像尺寸与画布不一致。');
+        const xs=[gate[0],gate[2],gate[4],gate[6]], ys=[gate[1],gate[3],gate[5],gate[7]];
+        const x=Math.min(...xs)*width,y=Math.min(...ys)*height,w=(Math.max(...xs)-Math.min(...xs))*width,h=(Math.max(...ys)-Math.min(...ys))*height;
+        if (!(w>0&&h>0)) throw new Error('引擎返回的片门尺寸无效。');
+        canvas.width=width; canvas.height=height; const ctx=canvas.getContext('2d'); if (!ctx) throw new Error('无法创建输出画布。');
+        ctx.drawImage(edge,0,0); ctx.save(); ctx.beginPath(); ctx.moveTo(gate[0]*width,gate[1]*height); for(let i=2;i<8;i+=2)ctx.lineTo(gate[i]*width,gate[i+1]*height); ctx.closePath(); ctx.clip();
+        ctx.fillStyle='#000'; ctx.fillRect(x,y,w,h); const scale=Math.min(w/source.width,h/source.height); const sw=source.width*scale,sh=source.height*scale;
+        ctx.drawImage(source,x+(w-sw)/2,y+(h-sh)/2,sw,sh); ctx.restore();
+        $('empty').hidden=true; canvas.style.display='block'; outputReady=true; setStatus(`已完成 · ${width} × ${height} 像素`); setBusy(false);
+      } catch (error) { if (ticket!==generation || error.name==='AbortError') return; outputReady=false; setStatus(error.message || '生成失败，请重试。',true); setBusy(false); }
+    }
+    $('open').addEventListener('click',()=>fileInput.click()); fileInput.addEventListener('change',()=>selectFile(fileInput.files[0]));
+    generate.addEventListener('click',render);
+    $('format').addEventListener('change',settingsChanged); $('frameNumber').addEventListener('input',settingsChanged);
+    $('filmStock').addEventListener('change',settingsChanged);
+    for(const event of ['dragenter','dragover']) stage.addEventListener(event,e=>{e.preventDefault();stage.classList.add('dragging')});
+    for(const event of ['dragleave','drop']) stage.addEventListener(event,e=>{e.preventDefault();stage.classList.remove('dragging')});
+    stage.addEventListener('drop',e=>selectFile(e.dataTransfer.files[0]));
+    save.addEventListener('click',()=>{if(!outputReady)return; save.disabled=true; canvas.toBlob(blob=>{ if(!blob){setStatus('导出失败，请重试。',true);save.disabled=false;return;} const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=(fileName || '照片')+'-胶片边框.png'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),30000); if($('autoAdvance').checked && Number($('frameNumber').value)<99){$('frameNumber').value=String(Number($('frameNumber').value)+1); settingsChanged(); setStatus('已开始下载，张数已加一，点击生成边框更新预览');} else {save.disabled=false;setStatus('已开始下载，请在浏览器的下载记录中查看');} },'image/png');});
+  })();
+  </script>
+</body>
+</html>
